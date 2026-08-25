@@ -98,68 +98,77 @@ public class PaymentService {
     // ==========================================
 
     @Transactional
-    public boolean verifyPayment(
+    public String verifyPayment(
             String razorpayOrderId,
             String razorpayPaymentId,
             String razorpaySignature,
             int userId) {
 
+        // Returns "SUCCESS" or a specific failure reason string.
+
+        // Prepare signature verification data
+        JSONObject attributes = new JSONObject();
+
+        attributes.put(
+                "razorpay_order_id",
+                razorpayOrderId
+        );
+
+        attributes.put(
+                "razorpay_payment_id",
+                razorpayPaymentId
+        );
+
+        attributes.put(
+                "razorpay_signature",
+                razorpaySignature
+        );
+
+        // Verify signature
+        boolean isSignatureValid;
+
         try {
-
-            // Prepare signature verification data
-            JSONObject attributes = new JSONObject();
-
-            attributes.put(
-                    "razorpay_order_id",
-                    razorpayOrderId
-            );
-
-            attributes.put(
-                    "razorpay_payment_id",
-                    razorpayPaymentId
-            );
-
-            attributes.put(
-                    "razorpay_signature",
-                    razorpaySignature
-            );
-
-            // Verify signature
-            boolean isSignatureValid =
+            isSignatureValid =
                     com.razorpay.Utils.verifyPaymentSignature(
                             attributes,
                             razorpayKeySecret
                     );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "SIGNATURE_CHECK_ERROR: " + e.getMessage();
+        }
 
-            if (!isSignatureValid) {
-                return false;
-            }
-
-
-            // Find local order
-            Order order = orderRepository
-                    .findById(razorpayOrderId)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Order not found"
-                            )
-                    );
+        if (!isSignatureValid) {
+            return "INVALID_SIGNATURE";
+        }
 
 
-            // Verify order belongs to logged-in user
-            if (order.getUserId() != userId) {
+        // Find local order
+        Order order = orderRepository
+                .findById(razorpayOrderId)
+                .orElse(null);
 
-                throw new RuntimeException(
-                        "Unauthorized order access"
-                );
-            }
+        if (order == null) {
+            return "ORDER_NOT_FOUND: " + razorpayOrderId;
+        }
 
 
-            // Prevent duplicate processing
-            if (order.getStatus() == OrderStatus.SUCCESS) {
-                return true;
-            }
+        // Verify order belongs to logged-in user
+        if (order.getUserId() != userId) {
+            return "UNAUTHORIZED_ORDER: order belongs to user "
+                    + order.getUserId()
+                    + " but request is from user "
+                    + userId;
+        }
 
+
+        // Prevent duplicate processing
+        if (order.getStatus() == OrderStatus.SUCCESS) {
+            return "SUCCESS";
+        }
+
+
+        try {
 
             // ==========================================
             // GET USER CART ITEMS
@@ -172,10 +181,7 @@ public class PaymentService {
                             );
 
             if (cartItems.isEmpty()) {
-
-                throw new RuntimeException(
-                        "Cart is empty"
-                );
+                return "EMPTY_CART";
             }
 
 
@@ -245,13 +251,13 @@ public class PaymentService {
                             userId
                     );
 
-            return true;
+            return "SUCCESS";
 
         } catch (Exception e) {
 
             e.printStackTrace();
 
-            return false;
+            return "ORDER_ITEM_SAVE_ERROR: " + e.getMessage();
         }
     }
 

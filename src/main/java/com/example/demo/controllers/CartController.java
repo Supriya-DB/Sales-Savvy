@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,8 @@ import com.example.demo.entities.User;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.CartService;
 import com.example.demo.services.ProductService;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -40,10 +43,18 @@ public class CartController {
     // =========================
     @PostMapping("/add")
     public ResponseEntity<?> addToCart(
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
 
-        String username =
-                (String) request.get("username");
+        User user = (User) httpRequest.getAttribute(
+                "authenticatedUser"
+        );
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
 
         Integer productId =
                 ((Number) request.get("productId"))
@@ -56,7 +67,7 @@ public class CartController {
                         : 1;
 
         cartService.addToCart(
-                username,
+                user.getUsername(),
                 productId,
                 quantity
         );
@@ -72,14 +83,26 @@ public class CartController {
 
     // =========================
     // VIEW CART ITEMS
-    // GET /api/cart?username=supri
+    // GET /api/cart
+    // (uses the authenticated user from the session cookie,
+    // not a client-supplied username)
     // =========================
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getCartItems(
-            @RequestParam String username) {
+    public ResponseEntity<?> getCartItems(
+            HttpServletRequest httpRequest) {
+
+        User user = (User) httpRequest.getAttribute(
+                "authenticatedUser"
+        );
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
 
         List<CartItem> cartItems =
-                cartService.getCartItems(username);
+                cartService.getCartItems(user.getUsername());
 
         List<Map<String, Object>> response = new ArrayList<>();
 
@@ -178,15 +201,21 @@ public class CartController {
 
     // =========================
     // GET TOTAL CART COUNT
-    // GET /api/cart/items/count?username=supri
+    // GET /api/cart/items/count
     // =========================
     @GetMapping("/items/count")
-    public ResponseEntity<Integer> getCartCount(
-            @RequestParam String username) {
+    public ResponseEntity<?> getCartCount(
+            HttpServletRequest httpRequest) {
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+        User user = (User) httpRequest.getAttribute(
+                "authenticatedUser"
+        );
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
 
         int count = cartService.getCartItemCount(
                 user.getUserId()
@@ -198,13 +227,23 @@ public class CartController {
 
     // =========================
     // GET TOTAL PRICE
-    // GET /api/cart/total?username=supri
+    // GET /api/cart/total
     // =========================
     @GetMapping("/total")
     public ResponseEntity<?> getCartTotal(
-            @RequestParam String username) {
+            HttpServletRequest httpRequest) {
 
-    	BigDecimal total = cartService.getCartTotal(username);
+        User user = (User) httpRequest.getAttribute(
+                "authenticatedUser"
+        );
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
+
+    	BigDecimal total = cartService.getCartTotal(user.getUsername());
 
         return ResponseEntity.ok(
                 Map.of("total", total)
@@ -214,13 +253,23 @@ public class CartController {
 
     // =========================
     // CLEAR COMPLETE CART
-    // DELETE /api/cart/clear?username=supri
+    // DELETE /api/cart/clear
     // =========================
     @DeleteMapping("/clear")
     public ResponseEntity<?> clearCart(
-            @RequestParam String username) {
+            HttpServletRequest httpRequest) {
 
-        cartService.clearCart(username);
+        User user = (User) httpRequest.getAttribute(
+                "authenticatedUser"
+        );
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
+
+        cartService.clearCart(user.getUsername());
 
         return ResponseEntity.ok(
                 Map.of(

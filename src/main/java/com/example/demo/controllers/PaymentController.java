@@ -227,7 +227,7 @@ public class PaymentController {
             // ==========================================
             // VERIFY PAYMENT
             // ==========================================
-            boolean isVerified =
+            String verifyResult =
                     paymentService.verifyPayment(
 
                             razorpayOrderId,
@@ -243,7 +243,7 @@ public class PaymentController {
             // ==========================================
             // PAYMENT SUCCESS
             // ==========================================
-            if (isVerified) {
+            if (verifyResult.equals("SUCCESS")) {
 
                 return ResponseEntity.ok(
                         Map.of(
@@ -265,7 +265,8 @@ public class PaymentController {
                     .body(
                             Map.of(
                                     "error",
-                                    "Payment verification failed",
+                                    "Payment verification failed: "
+                                            + verifyResult,
 
                                     "paymentStatus",
                                     "FAILED"
