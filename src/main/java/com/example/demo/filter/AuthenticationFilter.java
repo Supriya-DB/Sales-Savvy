@@ -56,8 +56,11 @@ public class AuthenticationFilter extends OncePerRequestFilter {
         logger.info("Request URI: {}", requestURI);
 
         // Public endpoints
+     // Public endpoints
         if (requestURI.equals("/api/users/register")
                 || requestURI.equals("/api/auth/login")
+                || requestURI.startsWith("/api/products/")
+                || requestURI.startsWith("/api/categories")
                 || request.getMethod().equalsIgnoreCase("OPTIONS")) {
 
             filterChain.doFilter(request, response);

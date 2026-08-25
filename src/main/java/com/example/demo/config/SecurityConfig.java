@@ -44,7 +44,9 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers(
                     "/api/users/register",
-                    "/api/auth/login"
+                    "/api/auth/login",
+                    "/api/products/**",
+                    "/api/categories/**"
                 ).permitAll()
 
                 // All other endpoints require authentication
